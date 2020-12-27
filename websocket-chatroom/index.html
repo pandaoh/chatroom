@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.9">
+    <title>简单聊天室</title>
+    <link rel="icon" href="favicon.ico">
+    <link rel="stylesheet" href="./css/bootstrap.min.css">
+    <script src="./js/jquery-3.4.1.min.js"></script>
+    <script src="./js/bootstrap.bundle.min.js"></script>
+    <script src="./js/vue.min.js"></script>
+    <style type="text/css">
+      ::-webkit-scrollbar {
+        background-color: transparent;
+        width: .3rem;
+        height: .3rem;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 2rem;
+      }
+      ::-webkit-scrollbar-button {
+        width: 0;
+        height: 0;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(0, 0, 0, 0.7);
+      }
+      [v-cloak] {
+        display: none;
+      }
+      #chatroom {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-evenly;
+        align-items: center;
+        min-height: 600px;
+        width: 100%;
+      }
+      #chatroom>h3 {
+        height: 35px;
+        padding: 3px;
+        margin: 3px;
+      }
+      #chatroom>h3:after {
+        content: attr(userInfo);
+        font-size: small;
+        font-weight: bold;
+        color: #888;
+      }
+      .chatroom-box {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: flex-start;
+        width: 100%;
+        height: calc(100% - 55px);
+      }
+      .chatroom-box-message {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin: 0 5px;
+        width: 80%;
+        height: 100%;
+      }
+      .message-screen {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: flex-start;
+        height: 92%;
+        max-height: 92%;
+        width: 100%;
+        border: 3px solid wheat;
+        border-radius: 5px;
+        overflow: scroll;
+      }
+      .message, .message-self {
+        align-self: flex-start;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 5px;
+        margin: 5px;
+        max-width: 88%;
+        justify-content: flex-start;
+      }
+      .message-self {
+        align-self: flex-end;
+        justify-content: flex-end !important;
+      }
+      .message-item-user {
+        width: 50px;
+        height: 50px;
+        text-align: center;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        background: black;
+        color: white;
+        border-radius: 90%;
+        font-size: small;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 5px;
+        align-self: flex-end;
+      }
+      .message-item-content, .message-item-content-self {
+        padding: 5px;
+        border-radius: 5px 5px 5px 0;
+        word-break: break-word;
+        text-align: left;
+        max-width: calc(100% - 50px - 55px);
+        /*word-break:break-all;*/
+        /*word-wrap:break-word;*/
+      }
+      .message-item-content-self {
+        border-radius: 5px 5px 0 5px;
+      }
+      .message-item-time {
+        align-self: flex-end;
+        height: 30px;
+        width: 50px;
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: smaller;
+        color: #dcdcdc;
+      }
+      .message-sendbox {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        height: 7%;
+        width: 100%;
+      }
+      .message-sendbox .input-group {
+        width: 100%;
+        height: 100%;
+      }
+      .message-sendbox .input-group-prepend {
+        width: 4%;
+        height: 100%;
+      }
+      .message-sendbox .input-group-append {
+        width: 8%;
+        height: 100%;
+      }
+      .message-sendbox [data-toggle="dropdown"]:after {
+        content: '@';
+      }
+      .message-sendbox button {
+        width: 100%;
+        height: 100%;
+      }
+      .message-sendbox input {
+        height: 100%;
+      }
+      #message-input {
+        width: 83.5%;
+      }
+      #message-to {
+        width: 4%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: center;
+      }
+      .chatroom-box-userlist {
+        height: 100%;
+        width: 19%;
+        overflow: scroll;
+      }
+      .online-user-title {
+        margin-bottom: 3px;
+        border-radius: 5px;
+        height: 35px;
+        text-align: center;
+        line-height: 35px;
+        position: sticky;
+        top: 0;
+      }
+      .online-user-count {
+        margin: 0 5px;
+      }
+      .user {
+        border-radius: 5px;
+        border-bottom: 1px dotted #ccc;
+        cursor: pointer;
+        padding: .3rem .5rem;
+      }
+      .user:hover {
+        background-color: #fc3;
+      }
+      .user-id:before {
+        content: '[';
+      }
+      .user-id:after {
+        content: ']';
+      }
+      @media screen and (min-width: 576px) {
+        .modal-dialog-centered{
+          margin: 1rem auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chatroom" v-cloak>
+      <h3 :userInfo="userInfo">简单聊天室</h3>
+      <div class="chatroom-box d-none">
+        <div class="chatroom-box-message">
+          <div class="message-screen" id="content">
+            <!--<单个类可写 :class="{'bg-danger text-light':true}">-->
+            <div :class="message.userId == userId ? 'message-self' : 'message'" v-for="(message,index) in allMessage" :key="index">
+              <span :class="['message-item-user', {'order-last':message.userId == userId}, {'order-first':message.userId != userId}]" :title="`[${message.userId}]${message.user}`">{{ message.user }}</span>
+              <span :class="['order-1', message.userId == userId ? 'message-item-content-self bg-primary' : 'message-item-content bg-success', {'bg-danger text-light':message.userId == 'admin'},{'bg-warning':!!message.o2o}]">
+                {{ message.data }}
+                <sup><b class='text-danger' v-if='!!message.o2o' v-html="`<br/>【FROM [${message.userId}](${message.user}) TO [${message.o2o}](${userList[message.o2o]})】`"></b></sup>
+                <!--<可以写{{ `<br/>【FROM [${message.userId}](${message.user}) TO [${message.o2o}](${userList[message.o2o]})】` }}>-->
+              </span>
+              <span class="message-item-time" :class="message.userId == userId ? 'order-first' : 'order-last'" :title="message.time">{{ message.timeSince }}</span>
+            </div>
+          </div>
+          <div class="message-sendbox">
+            <div class="input-group">
+              <div class="input-group-prepend">
+                <button type="button" class="btn btn-secondary dropdown-toggle-split" data-toggle="dropdown"></button>
+                <div class="dropdown-menu">
+                  <a class="dropdown-item" href="#">公告</a>
+                  <div role="separator" class="dropdown-divider"></div>
+                  <a class="dropdown-item" href="#">群聊1</a>
+                  <a class="dropdown-item" href="#">群聊2</a>
+                  <a class="dropdown-item" href="#">群聊3</a>
+                </div>
+              </div>
+              <input id="message-to" class="form-control" readonly type="text" v-model="messageTo" @dblclick="messageTo = '';"/>
+              <input id="message-input" class="form-control" autocomplete="off" type="text" v-model="userMessage"/>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-success" @click="sendMessage">发送</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="chatroom-box-userlist" id="online-user">
+          <div class="online-user-title bg-primary">
+            Online<span class="badge badge-danger online-user-count">{{ userCount }}</span>
+          </div>
+          <div class="user" v-for="(user,index) in userList" :key="index" @click="setMessageTo">
+            <span class="user-id text-danger">{{ index }}</span>
+            {{ user }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="userModal" tabindex="-1" data-backdrop="static" data-keyboard="false">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">请输入昵称</h5>
+          </div>
+          <div class="modal-body">
+            <input id="user-name" autocomplete="off" class="form-control" type="text" pattern="^[\w\u4e00-\u9fa5]{1,16}$" placeholder="请输入昵称(数字/字母/汉字/下划线)"/>
+            <div class="valid-feedback">
+              你昵称取得真棒！
+            </div>
+            <div class="invalid-feedback">
+              请检查你的昵称！
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="setUser();">确定</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="text/javascript">
+      var chatRoom = new Vue({
+        el: '#chatroom',
+        data: {
+          userId: '',
+          userName: '',
+          userMessage: '',
+          messageTo: '',
+          regExp: /^[\w\u4e00-\u9fa5]{1,16}$/g,
+          allMessage: [],
+          webSocket: {},
+          userList: [],
+          userCount: 0
+        },
+        computed: {
+          userInfo: function () {
+            return `[${this.userId}](${this.userName})`;
+          }
+        },
+        methods: {
+          wsServer: function () {
+            let param = '?userName=' + this.userName;
+            var wsServer = 'wss://api.biugle.cn/chatws' + param;
+            this.webSocket = new WebSocket(wsServer);
+            this.webSocket.onopen = () => {
+              console.log('%c ----------聊天室已连接----------', 'color:green;');
+              let message = {
+                type: "setId",
+                name: chatRoom.userName
+              };
+              let content = JSON.stringify(message);
+              chatRoom.webSocket.send(content);
+              $('.chatroom-box').removeClass('d-none');
+              $('#message-input').focus();
+            };
+            this.webSocket.onclose = function () {
+              alert('聊天室已关闭！');
+              $('.chatroom-box').addClass('d-none');
+              window.location.reload();
+            };
+            this.webSocket.onmessage = (evt) => {
+              console.log('%c ~~~~~~~~~~Onmessage~~~~~~~~~~', 'color:blue;');
+              console.log(evt);
+              console.log('%c ~~~~~~~~~~Onmessage~~~~~~~~~~', 'color:blue;');
+              let res = JSON.parse(evt.data);
+              switch (res.type) {
+                case 'setId':
+                  this.userId = res.clientId;
+                case 'message':
+                  this.allMessage.push({
+                    userId: res.userId,
+                    user: res.user,
+                    data: res.data,
+                    time: (!res.time) ? new Date().format() : res.time,
+                    timeSince: (!res.time) ? new Date().format('hh:ii') : new Date(res.time).format('hh:ii'),
+                    o2o: res.to === undefined ? false : res.to
+                  });
+                  (!['admin', this.userId].includes(res.userId) && document.hidden) && sendNotification({
+                    "title": `[${res.userId}](${res.user})`,
+                    "body": res.data,
+                    "icon": "favicon.ico",
+                    "time": res.time //暂时未使用,tag属性默认为空
+                  });
+                  break;
+                case 'list':
+                  this.userList = res.data;
+                  this.userCount = Object.keys(this.userList).length;
+                  break;
+                default:
+                  break;
+              }
+              this.$nextTick(function () {
+                document.querySelector(".message-screen").scrollTo(0, document.querySelector(".message-screen").scrollHeight);
+              });
+            };
+            this.webSocket.onerror = function (evt, e) {
+              alert('服务器出错了！');
+              $('.chatroom-box').addClass('d-none');
+              window.location.reload();
+            };
+          },
+          sendMessage: function () {
+            if (!!this.webSocket) {//若没有webSocket对象
+              if (!this.userMessage) {
+                return;
+              }
+              let message = !this.messageTo ? {
+                type: 'message',
+                message: this.userMessage
+              } : {
+                type: 'o2o',
+                receiver: this.messageTo,
+                message: this.userMessage
+              };
+              this.webSocket.send(JSON.stringify(message));
+              this.userMessage = '';
+              return;
+            }
+            alert("服务已关闭！");
+            window.location.reload();
+          },
+          resizeHeight: function () {
+            $('#chatroom').height($(window).height() - $('#chatroom').offset().top - 30);
+          },
+          setMessageTo: function (e) {
+//            e.target; //当前元素，可修改（能够用此方法获取到他的子元素，不能获取他本身的内容）
+//            e.currentTarget;//当前元素，不可修改（能够用此方法获取到他的子元素及能获取他本身的内容）
+            this.messageTo = $(e.target).find('.user-id').html();
+          }
+        },
+        mounted: function () {
+          initNotification();
+          //  $('#userModal').modal({
+          //     backdrop: false,
+          //     keyboard: false
+          //  }).modal('show');
+          // if(!window.localStorage.userName) {
+
+         $('#userModal').on('shown.bs.modal', function (e) {//show.bs.modal是显示前执行
+            $('#user-name').focus();
+//            $('#user-name').trigger('focus');//bootstrap focus通过添加伪类实现，控制台输入focus方法是无效的，因为此时鼠标在控制台，可以设置延迟将鼠标回到页面后会生效。
+         }).modal('show');
+
+          // }else {
+          //     this.userName = window.localStorage.userName;
+          //     this.wsServer();
+          // }
+          $(window).on('resize', this.resizeHeight).resize();
+          document.onkeydown = (e) => {
+            var theEvent = window.event || e;
+            var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
+            code === 13 && this.sendMessage();
+          };
+        },
+        destroyed: function () {
+          $(window).off('resize', this.resizeHeight);
+          this.webSocket.close();
+        }
+      });
+      /**
+       * 初始化通知，检测是否开通权限。
+       */
+      function initNotification() {
+        if (Notification.permission === 'default' || Notification.permission === 'undefined' || Notification.permission === 'denied') {
+          Notification.requestPermission().then(function (permission) {
+            if (permission === 'denied') { // 使用者同意
+              alert('必须开启网页推播通知才可以获取更好的使用体验哦。');
+            }
+          });
+        }
+      }
+      /**
+       * 发送通知
+       * @param {type} options
+       * @param {type} event
+       */
+      function sendNotification(options, event) {
+        let title = options.title || '聊天室通知';
+        options.body = formatStr(options.body);
+        var notice = new Notification(title, options);
+        setTimeout(function () {
+          notice.close();
+        }, 2000);
+        $(notice).on("click", function () {
+          this.close();
+          $(window).focus();
+          $("#message-input").focus();
+        });
+      }
+      /**
+       * 处理问题字符串
+       * @param {String} 要处理的字符串。
+       * @return {String}
+       */
+      function formatStr(str) {
+        str = str.trim();
+        let div = document.createElement('div');
+        div.textContent = str;//利用textContent属性转化"<",">","&","'"等字符 
+        let formatString = div.innerHTML;
+        return formatString;
+      }
+      function setUser() {
+        $("#userModal input").removeClass('is-valid is-invalid');
+        let userName = $('#user-name').val();
+        if (chatRoom.regExp.test(userName)) {
+          // window.localStorage.userName = userName;
+          chatRoom.userName = userName;
+          $("#userModal input").addClass('is-valid');
+          $('#userModal').modal('hide');
+          try {
+            chatRoom.wsServer();
+          } catch (e) {
+            alert("服务器连接失败！");
+            window.location.reload();
+          } finally {
+            console.log('%c error finally!', 'color:red;');
+          }
+          return;
+        }
+        return $("#userModal input").addClass('is-invalid');
+      }
+      Date.prototype.format = function (fmt = "yyyy-mm-dd hh:ii:ss") {
+        let o = {
+          'm+': this.getMonth() + 1, //月份 
+          'd+': this.getDate(), //日 
+          'h+': this.getHours(), //小时 
+          'i+': this.getMinutes(), //分 
+          's+': this.getSeconds(), //秒 
+          'Q+': Math.floor((this.getMonth() + 3) / 3), //季度 
+          'S': this.getMilliseconds()             //毫秒 
+        };
+        if (/(y+)/.test(fmt)) {
+          fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
+        }
+        for (let k in o) {
+          if (new RegExp('(' + k + ')').test(fmt)) {
+            fmt = fmt.replace(RegExp.$1, (RegExp.$1.length === 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+          }
+        }
+        return fmt;
+      };
+      function timeSince(date, longago = false, formater = "yyyy-mm-dd hh:ii:ss") {
+        if (!date) {
+          return;
+        }
+        let dateTS = new Date(date);//date.replace(/-/g, '/')现在-与/都可以new出Date，可删除。
+        let seconds = Math.floor((new Date() - dateTS) / 1000);//看情况是否+-8*3600（8小时）
+        let interval = Math.floor(seconds / (24 * 3600));
+        if (longago) {
+          interval = Math.floor(seconds / (30 * 24 * 3600));
+          if (interval >= 4) {
+            return dateTS.format(formater);
+          }
+          if (interval >= 1) {
+            return interval + " 月前";
+          }
+          interval = Math.floor(seconds / (7 * 24 * 3600));
+          if (interval >= 1) {
+            return interval + " 周前";
+          }
+        }
+        if (interval >= 8) {
+          return dateTS.format(formater);
+        }
+        interval = Math.floor(seconds / (24 * 3600));
+        if (interval >= 1) {
+          return interval + " 天前";
+        }
+        interval = Math.floor(seconds / 3600);
+        if (interval >= 1) {
+          return interval + " 小时";
+        }
+        interval = Math.floor(seconds / 60);
+        if (interval >= 1) {
+          return interval + " 分钟前";
+        }
+        return "刚刚";
+      }
+    </script>
+  </body>
+</html>
